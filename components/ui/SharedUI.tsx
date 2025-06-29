@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { getDaysInMonth, getFirstDayOfMonth, formatDateISO, areDatesEqual } from '../../utils/dateUtils';
-import { IconChevronLeft, IconChevronRight, IconHelpCircle } from './Icons';
+import { IconChevronLeft, IconChevronRight, IconHelpCircle, IconSparkles } from './Icons';
+import { useUser } from '../../contexts/UserContext';
 
 // --- HELLO PANEL & TOUR ---
 interface HelloPanelProps {
@@ -73,6 +75,75 @@ export const TourModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ 
             <div className="text-center p-4">
                 <h3 className="text-xl font-bold mb-4 text-text-light dark:text-text-dark">{tourSteps[step].title}</h3>
                 <p className="text-text-muted-light dark:text-text-muted-dark">{tourSteps[step].content}</p>
+            </div>
+        </Modal>
+    );
+};
+
+
+// --- ONBOARDING MODAL ---
+interface OnboardingModalProps {
+    isOpen: boolean;
+    onFinish: () => void;
+}
+
+export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onFinish }) => {
+    const { setupExampleData } = useUser();
+    const [step, setStep] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setStep(1);
+            setIsLoading(false);
+        }
+    }, [isOpen]);
+
+    const handleGetStarted = async () => {
+        setIsLoading(true);
+        // Using a timeout to make the loading feel more tangible, as state updates are fast
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+        setupExampleData();
+        setIsLoading(false);
+        setStep(2);
+    };
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={() => {}} // Prevent closing via overlay click
+            title={step === 1 ? "Welcome to Momentum Grid!" : "You're All Set!"}
+            footer={
+                step === 1 ? (
+                    <Button onClick={handleGetStarted} disabled={isLoading} className="w-full justify-center">
+                        {isLoading ? 'Setting things up...' : 'Get Started'}
+                    </Button>
+                ) : (
+                    <Button onClick={onFinish} className="w-full justify-center">
+                        Start Exploring
+                    </Button>
+                )
+            }
+        >
+            <div className="text-center p-4">
+                <div className="mx-auto bg-primary-100 dark:bg-primary-900/50 rounded-full h-16 w-16 flex items-center justify-center mb-6">
+                    <IconSparkles className="w-9 h-9 text-primary-600 dark:text-primary-300" />
+                </div>
+                {step === 1 ? (
+                    <>
+                        <h3 className="text-xl font-bold mb-2 text-text-light dark:text-text-dark">Let's get you started.</h3>
+                        <p className="text-text-muted-light dark:text-text-muted-dark">
+                           We can set you up with a few sample routines and habits to show you how Momentum Grid works. You can easily modify or delete them later.
+                        </p>
+                    </>
+                ) : (
+                     <>
+                        <h3 className="text-xl font-bold mb-2 text-text-light dark:text-text-dark">Examples have been added!</h3>
+                        <p className="text-text-muted-light dark:text-text-muted-dark">
+                           These are just examples to get you going. Feel free to modify them to suit your personal goals. Click below to start your journey.
+                        </p>
+                    </>
+                )}
             </div>
         </Modal>
     );

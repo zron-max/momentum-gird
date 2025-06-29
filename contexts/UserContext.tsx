@@ -19,6 +19,9 @@ interface UserContextType {
     activityLogs: ActivityLog[];
     logActivity: (action: ActivityAction, user?: User | null) => void;
 
+    // Onboarding
+    setupExampleData: () => void;
+
     // Tracker Data
     habits: Habit[];
     saveHabit: (habitData: Omit<Habit, 'id' | 'completions'>, existingId?: string) => void;
@@ -138,7 +141,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (!user) {
                     const adminUser = {
                         id: `admin-${Date.now()}`, name: 'Admin', username: 'zron',
-                        password: 'devminkhant', hasCompletedTour: true, role: 'admin' as const,
+                        password: 'devminkhant', hasCompletedTour: true, hasSetupExamples: true, role: 'admin' as const,
                     };
                     setUsers(prev => [...prev, adminUser]);
                     user = adminUser;
@@ -171,10 +174,13 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
             const newUser: User = {
                 id: `user-${Date.now()}`, name, username, password,
-                hasCompletedTour: false, role: 'user',
+                hasCompletedTour: false, 
+                hasSetupExamples: false,
+                role: 'user',
             };
             setUsers(prev => [...prev, newUser]);
-
+            
+            // Now, log the user in. The data loading effect will pick up the new data.
             const { password: newPassword, ...userWithoutPassword } = newUser;
             sessionStorage.setItem('loggedInUserId', newUser.id);
             setCurrentUser(userWithoutPassword as User);
@@ -233,6 +239,73 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             logActivity('feedback_submission');
             resolve();
         });
+    };
+
+    // --- Onboarding ---
+    const setupExampleData = () => {
+        if (!currentUser) return;
+
+        const userId = currentUser.id;
+        const today = new Date();
+        const getDateStr = (offset: number): string => {
+            const date = new Date(today);
+            date.setDate(today.getDate() - offset);
+            return formatDateISO(date);
+        };
+        
+        const exampleHabits: Habit[] = [
+            { id: `habit-${userId}-1`, name: 'Drink 8 Glasses of Water', icon: '', color: '#0ea5e9', completions: { [getDateStr(1)]: true, [getDateStr(2)]: true, [getDateStr(4)]: true } },
+            { id: `habit-${userId}-2`, name: 'Exercise for 30 Minutes', icon: '', color: '#22c55e', completions: { [getDateStr(1)]: true, [getDateStr(3)]: true } },
+            { id: `habit-${userId}-3`, name: 'Read for 30 Minutes', icon: '', color: '#f97316', completions: { [getDateStr(2)]: true, [getDateStr(5)]: true, [getDateStr(6)]: true } },
+        ];
+
+        const morningSubtasks = [
+            { id: `st-${userId}-m-1`, name: 'Wake up (6:00 AM)' },
+            { id: `st-${userId}-m-2`, name: 'Stretching (10 minutes)' },
+            { id: `st-${userId}-m-3`, name: 'Meditation (5 minutes)' },
+            { id: `st-${userId}-m-4`, name: 'Healthy Breakfast (20 minutes)' },
+        ];
+        const eveningSubtasks = [
+            { id: `st-${userId}-e-1`, name: 'Tidy up living space' },
+            { id: `st-${userId}-e-2`, name: 'Prepare for tomorrow' },
+            { id: `st-${userId}-e-3`, name: 'Read a book (no screens)' },
+        ];
+
+        const exampleRoutines: Routine[] = [
+            {
+                id: `routine-${userId}-1`,
+                name: 'Morning Routine',
+                subTasks: morningSubtasks,
+                completions: {
+                    [getDateStr(1)]: { [morningSubtasks[0].id]: true, [morningSubtasks[1].id]: true, [morningSubtasks[2].id]: true, [morningSubtasks[3].id]: true },
+                    [getDateStr(3)]: { [morningSubtasks[0].id]: true, [morningSubtasks[1].id]: true },
+                },
+            },
+            {
+                id: `routine-${userId}-2`,
+                name: 'Evening Wind-down',
+                subTasks: eveningSubtasks,
+                completions: { [getDateStr(2)]: { [eveningSubtasks[0].id]: true, [eveningSubtasks[2].id]: true } },
+            }
+        ];
+
+        const exampleLearningGoalId = `lg-${userId}-1`;
+        const exampleLearningGoals: LearningGoal[] = [
+            {
+                id: exampleLearningGoalId, name: 'Learn React Hooks', unit: 'hours', targetAmount: 20,
+                entries: { [getDateStr(2)]: { value: 1, notes: 'Completed tutorial on useState.' }, [getDateStr(5)]: { value: 1.5, notes: 'Practiced with useEffect.' } },
+            },
+        ];
+        
+        const exampleTimeBlocks: TimeBlock[] = [
+            { id: `tb-${userId}-1`, day: 1, startTime: '09:00', endTime: '11:00', taskName: 'Deep Work Session', color: '#6366f1', priority: 'High', isCompleted: false, linkedGoalId: undefined },
+            { id: `tb-${userId}-2`, day: 3, startTime: '19:00', endTime: '20:00', taskName: 'React Study', color: '#3b82f6', priority: 'Medium', isCompleted: true, linkedGoalId: exampleLearningGoalId },
+        ];
+
+        setHabits(exampleHabits);
+        setRoutines(exampleRoutines);
+        setLearningGoals(exampleLearningGoals);
+        setTimeBlocks(exampleTimeBlocks);
     };
 
     // --- Tracker Functions ---
@@ -360,6 +433,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const value: UserContextType = {
         currentUser, users, login, logout, register, updateUser, deleteUser,
         feedback, submitFeedback, activityLogs, logActivity,
+        setupExampleData,
         habits, saveHabit, deleteHabit, toggleHabitCompletion,
         learningGoals, saveLearningGoal, deleteLearningGoal, logLearningProgress,
         timeBlocks, saveTimeBlock, deleteTimeBlock,

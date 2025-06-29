@@ -7,7 +7,7 @@ import { HabitTracker, LearningTracker, ProjectTracker, RoutineTracker, TimeBloc
 import { useUser } from './contexts/UserContext';
 import { AuthView } from './components/auth/AuthView';
 import AdminDashboard from './components/admin/AdminDashboard';
-import { HelloPanel, TourModal, FeedbackModal } from './components/ui/SharedUI';
+import { HelloPanel, TourModal, FeedbackModal, OnboardingModal } from './components/ui/SharedUI';
 
 const NAV_ITEMS = [
     { view: AppView.Habits, label: 'Habits', icon: IconHabits },
@@ -22,11 +22,19 @@ const App: React.FC = () => {
     const { currentUser, updateUser, submitFeedback } = useUser();
     const [isTourOpen, setTourOpen] = useState(false);
     const [isFeedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    const [isOnboardingModalOpen, setOnboardingModalOpen] = useState(false);
     
     useEffect(() => {
-        if (currentUser && !currentUser.hasCompletedTour) {
-            const timer = setTimeout(() => setTourOpen(true), 500);
-            return () => clearTimeout(timer);
+        if (currentUser) {
+            // Onboarding is the first priority for a new user
+            if (!currentUser.hasSetupExamples) {
+                setOnboardingModalOpen(true);
+            } 
+            // Tour is the second priority, after onboarding is done
+            else if (!currentUser.hasCompletedTour) {
+                const timer = setTimeout(() => setTourOpen(true), 500);
+                return () => clearTimeout(timer);
+            }
         }
     }, [currentUser]);
 
@@ -39,6 +47,13 @@ const App: React.FC = () => {
     
     const handleStartTour = () => setTourOpen(true);
     
+    const handleOnboardingFinish = () => {
+        setOnboardingModalOpen(false);
+        if (currentUser) {
+            updateUser({ ...currentUser, hasSetupExamples: true });
+        }
+    };
+
     const handleFeedbackSubmit = async (content: string) => {
         await submitFeedback(content);
         setFeedbackModalOpen(false);
@@ -59,6 +74,7 @@ const App: React.FC = () => {
                 onStartTour={handleStartTour}
                 onOpenFeedback={() => setFeedbackModalOpen(true)}
             />
+            <OnboardingModal isOpen={isOnboardingModalOpen} onFinish={handleOnboardingFinish} />
             <TourModal isOpen={isTourOpen} onClose={handleTourComplete} />
             <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} onSubmit={handleFeedbackSubmit} />
         </>

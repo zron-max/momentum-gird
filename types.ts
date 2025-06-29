@@ -15,6 +15,7 @@ export interface User {
   username: string;
   password?: string; // This is for simulation, would be hashed in production
   hasCompletedTour: boolean;
+  hasSetupExamples: boolean;
   role: 'admin' | 'user';
 }
 
