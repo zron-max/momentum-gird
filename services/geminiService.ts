@@ -2,23 +2,23 @@
 import { GoogleGenAI } from "@google/genai";
 import { Routine } from "../types";
 
-// Safely access the API key from environment variables.
-// This will be undefined if `process`, `process.env`, or the `API_KEY` itself is not available.
-const API_KEY = typeof process !== "undefined" && process.env ? process.env.API_KEY : undefined;
+// 1. Get the API key using the correct Vite syntax.
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 let ai: GoogleGenAI | null = null;
 
-// Initialize the AI client only if the API key is available.
-if (API_KEY) {
+// 2. Initialize the AI client only if the API key exists.
+if (GEMINI_API_KEY) {
   try {
-    ai = new GoogleGenAI({ apiKey: API_KEY });
+    // 3. The GoogleGenAI constructor takes the key directly as a string.
+    ai = new GoogleGenAI(GEMINI_API_KEY);
   } catch (error) {
     console.error("Failed to initialize GoogleGenAI. AI features will be disabled.", error);
-    ai = null; // Ensure ai is null if initialization fails.
+    ai = null;
   }
 } else {
-  // This warning is now accurate: the app won't crash, features will just be disabled.
-  console.warn("API_KEY environment variable not set. AI features will be disabled.");
+  // 4. Update the warning to use the correct variable name for easier debugging.
+  console.warn("VITE_GEMINI_API_KEY environment variable not set. AI features will be disabled.");
 }
 
 export const generateRoutineFromAI = async (prompt: string): Promise<Pick<Routine, 'name' | 'subTasks'>> => {
