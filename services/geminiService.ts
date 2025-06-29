@@ -2,20 +2,31 @@
 import { GoogleGenAI } from "@google/genai";
 import { Routine } from "../types";
 
-const API_KEY = process.env.API_KEY;
+// Safely access the API key from environment variables.
+// This will be undefined if `process`, `process.env`, or the `API_KEY` itself is not available.
+const API_KEY = typeof process !== "undefined" && process.env ? process.env.API_KEY : undefined;
 
-if (!API_KEY) {
-  // In a real app, you might want to handle this more gracefully.
-  // For this context, we will allow the app to run but AI features will fail.
+let ai: GoogleGenAI | null = null;
+
+// Initialize the AI client only if the API key is available.
+if (API_KEY) {
+  try {
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+  } catch (error) {
+    console.error("Failed to initialize GoogleGenAI. AI features will be disabled.", error);
+    ai = null; // Ensure ai is null if initialization fails.
+  }
+} else {
+  // This warning is now accurate: the app won't crash, features will just be disabled.
   console.warn("API_KEY environment variable not set. AI features will be disabled.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
-
 export const generateRoutineFromAI = async (prompt: string): Promise<Pick<Routine, 'name' | 'subTasks'>> => {
-  if (!API_KEY) {
-    throw new Error("API key is not configured.");
+  // Check if the AI client was successfully initialized before using it.
+  if (!ai) {
+    throw new Error("API key is not configured or AI service is unavailable.");
   }
+
   const fullPrompt = `Based on the following goal: "${prompt}", generate a relevant routine name and a list of 5 to 7 simple, actionable sub-tasks.
   Return the response as a single, valid JSON object with the structure: {"name": "Routine Name", "subTasks": ["Sub-task 1", "Sub-task 2", ...]}.
   Do not include any other text or markdown formatting outside of the JSON object.`;
