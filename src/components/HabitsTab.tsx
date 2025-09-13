@@ -349,7 +349,7 @@ const HabitsTab = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Track your daily Behaviors and form Good-Habits</h2>
+          <h2 className="text-3xl font-small text-foreground">Track your Behavior</h2>
           <p className="text-2xl md:text-1xl font-extrabold bg-gradient-to-r from-purple-500 via-pink-400 to-emerald-400 bg-clip-text text-transparent mb-4"
           >
             It takes 18-254 days for a Behavior to become automatic "Habit"</p>
