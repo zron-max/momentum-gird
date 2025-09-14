@@ -29,7 +29,7 @@ const AuthForm = () => {
     if (error) {
       setError(error);
     } else {
-      navigate('/');
+      navigate('/dashboard');
     }
     
     setIsLoading(false);
@@ -49,9 +49,11 @@ const AuthForm = () => {
       } else {
         setError(error);
       }
+    } else {
+      setIsLoading(false);
+      navigate('/dashboard');
     }
     
-    setIsLoading(false);
   };
 
   return (

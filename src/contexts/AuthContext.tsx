@@ -8,6 +8,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  status: 'pending' | 'approved' | 'rejected' | null;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -28,6 +29,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,26 +40,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          // Check if user is admin
           setTimeout(async () => {
             try {
               const { data: profile } = await supabase
-              .from('profiles')
-              .select('is_admin')
-              .eq('user_id', session.user.id)
-              .single();
+                .from('profiles')
+                .select('is_admin, status')  // 👈 fetch both
+                .eq('user_id', session.user.id)
+                .single();
+
               setIsAdmin(profile?.is_admin || false);
+              setStatus(profile?.status || 'pending'); // 👈 default pending if missing
             } catch (error) {
-              console.error('Error checking admin status:', error);
+              console.error('Error checking profile status:', error);
               setIsAdmin(false);
+              setStatus(null);
             }
           }, 0);
         } else {
           setIsAdmin(false);
+          setStatus(null);
         }
-        
+
+
         setIsLoading(false);
       }
     );
@@ -95,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -137,6 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     isLoading,
     isAdmin,
+    status,
     signIn,
     signUp,
     signOut,

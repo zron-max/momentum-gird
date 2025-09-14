@@ -7,8 +7,14 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import PendingPage from "./pages/PendingPage";
+import HomePage from "./pages/HomePage";
 
 const queryClient = new QueryClient();
+
+
+
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -17,12 +23,20 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+            <Routes>
+  <Route
+    path="/dashboard"
+    element={
+      <ProtectedRoute>
+        <Index />
+      </ProtectedRoute>
+    }
+  />
+  <Route path="/" element={<HomePage />} />
+  <Route path="/auth" element={<Auth />} />
+  <Route path="/pending" element={<PendingPage />} />
+  <Route path="*" element={<NotFound />} />
+</Routes>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

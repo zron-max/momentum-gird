@@ -122,16 +122,26 @@ function UserManagement({ onStatsUpdate }: UserManagementProps) {
   const deleteUser = async (profileId: string, userId: string) => {
     try {
       setIsDeleting(true);
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      if (authError) throw authError;
-      await deleteFromProfiles(profileId);
+      const res = await fetch('/api/admin/deleteUser', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, profileId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete user');
+      }
+
       setUsers(prev => prev.filter(u => u.id !== profileId));
       toast({ title: 'Success', description: 'User deleted successfully' });
       onStatsUpdate();
     } catch (err) {
       console.error('Error deleting user:', err);
       toast({ title: 'Error', description: 'Failed to delete user', variant: 'destructive' });
-    } finally { setIsDeleting(false); }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const approveUser = (u: User) => handleRoleStatusUpdate(u, USER_STATUS.APPROVED);
