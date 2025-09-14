@@ -13,34 +13,31 @@ import HomePage from "./pages/HomePage";
 
 const queryClient = new QueryClient();
 
-
-
-
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-            <Routes>
-  <Route
-    path="/dashboard"
-    element={
-      <ProtectedRoute>
-        <Index />
-      </ProtectedRoute>
-    }
-  />
-  <Route path="/" element={<HomePage />} />
-  <Route path="/auth" element={<Auth />} />
-  <Route path="/pending" element={<PendingPage />} />
-  <Route path="*" element={<NotFound />} />
-</Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+            <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                    <Routes>
+                        <Route
+                            path="/dashboard"
+                            element={
+                                <ProtectedRoute>
+                                    <Index />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/pending" element={<PendingPage />} />
+                        <Route path="*" element={<NotFound />} />
+                    </Routes>
+                </BrowserRouter>
+            </TooltipProvider>
+        </AuthProvider>
+    </QueryClientProvider>
 );
 
 export default App;
