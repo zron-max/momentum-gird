@@ -6,7 +6,7 @@ CREATE TABLE public.profiles (
   full_name TEXT,
   is_admin BOOLEAN DEFAULT FALSE,
   plan_type TEXT DEFAULT 'free',
-  status TEXT DEFAULT 'active',
+  status TEXT DEFAULT 'pending',
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );

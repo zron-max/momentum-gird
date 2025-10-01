@@ -1,0 +1,284 @@
+import React, { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut, Clock, Moon, Sun, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client"; // keep your existing setup
+
+type Severity = "info" | "success" | "error" | "warning";
+
+export default function PendingPage(): JSX.Element {
+  const { signOut, user, setUserProfile } = useAuth();
+  const navigate = useNavigate();
+
+  // Theme
+  const [darkMode, setDarkMode] = useState<boolean>(() =>
+    typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false
+  );
+
+  // Refresh / status
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusSeverity, setStatusSeverity] = useState<Severity>("info");
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
+
+  // refs to avoid setting state after unmount
+  const mountedRef = useRef(true);
+  const redirectTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // apply theme early and on changes
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (darkMode) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+  }, [darkMode]);
+
+  const toggleTheme = () => setDarkMode((s) => !s);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error("Sign out failed:", err);
+      // proceed to navigate anyway
+    } finally {
+      navigate("/dashboard");
+    }
+  };
+
+  const setStatus = (severity: Severity, message: string) => {
+    if (!mountedRef.current) return;
+    setStatusSeverity(severity);
+    setStatusMessage(message);
+  };
+
+  /**
+   * refreshProfile - refetch profiles row safely, update context, and redirect on approved
+   */
+  const refreshProfile = async () => {
+    // quick guard
+    if (refreshing) return;
+    setStatusMessage(null);
+    setStatusSeverity("info");
+
+    if (!user?.id) {
+      setStatus("error", "No logged-in user found. Please sign out and sign back in.");
+      return;
+    }
+
+    setRefreshing(true);
+
+    try {
+      // optional: attempt to refresh session/user (v2 supabase client may have getUser)
+      try {
+        // defensive: if getUser exists, call it — otherwise skip
+        if ((supabase as any)?.auth && typeof (supabase as any).auth.getUser === "function") {
+          await (supabase as any).auth.getUser();
+        }
+      } catch (ignored) {
+        // ignore session-get errors
+      }
+
+      // fetch profile row
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("id, status, email, updated_at")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // network / server errors
+      if (error) {
+        console.error("Supabase error fetching profile:", error);
+        setStatus("error", "Failed to fetch profile. Check your connection or try again later.");
+        return;
+      }
+
+      // no row yet
+      if (!profile) {
+        setStatus("warning", "Profile not found yet. If you just signed up, wait ~30s and try again.");
+        setLastCheckedAt(new Date().toLocaleString());
+        return;
+      }
+
+      // update context/profile in AuthContext if available
+      if (typeof setUserProfile === "function") {
+        try {
+          setUserProfile(profile);
+        } catch (ctxErr) {
+          console.warn("setUserProfile failed (non-fatal):", ctxErr);
+        }
+      }
+
+      // set last checked timestamp
+      setLastCheckedAt(new Date().toLocaleString());
+
+      const statusString = (profile.status ?? "pending").toString();
+
+      if (statusString.toLowerCase() === "approved" || statusString.toLowerCase() === "active") {
+        setStatus("success", "Your account is approved — redirecting to dashboard...");
+        // short delay so the user sees the success message
+        redirectTimeoutRef.current = window.setTimeout(() => {
+          if (!mountedRef.current) return;
+          navigate("/dashboard");
+        }, 600);
+        return;
+      }
+
+      // not approved yet
+      setStatus("info", `Current status: ${statusString}. If you already paid, send proof via Telegram.`);
+    } catch (err: any) {
+      console.error("Unexpected error refreshing profile:", err);
+      setStatus("error", err?.message ?? "Unexpected error. Try again.");
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
+  };
+
+  // status pill classes mapped by severity
+  const statusColor = {
+    info: "text-blue-800 bg-blue-50 dark:bg-blue-900/30",
+    success: "text-green-900 bg-green-50 dark:bg-green-900/30",
+    error: "text-red-900 bg-red-50 dark:bg-red-900/30",
+    warning: "text-yellow-900 bg-yellow-50 dark:bg-yellow-900/30",
+  }[statusSeverity];
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 p-6">
+      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-10 transition-colors">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <img src="/logoM.jpg" alt="Momentum Grid" className="w-14 h-14 rounded-xl shadow-sm object-cover" />
+            <div>
+              <h1 className="text-2xl font-semibold">Subscription Pending</h1>
+              <p className="text-sm text-muted-foreground">
+                We are reviewing your payment. This page will update your account <strong className="font-medium">status</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              aria-pressed={darkMode}
+              aria-label="Toggle theme"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-sm transition"
+              title="Toggle theme"
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              <span className="text-sm">{darkMode ? "Light" : "Dark"}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                // quick manual refresh shortcut
+                refreshProfile();
+              }}
+              disabled={refreshing}
+              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              title="Quick check"
+            >
+              <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Account */}
+          <div className="col-span-1 md:col-span-1 bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-medium text-sky-600 mb-2">Your Account</h3>
+            <p className="font-mono text-sm break-words bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded px-3 py-2">
+              {user?.email ?? "No email found"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">Use this email when making the payment.</p>
+          </div>
+
+          {/* Status */}
+          <div className="col-span-1 md:col-span-2 bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 flex flex-col justify-between overflow-visible">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-sky-600">Subscription Status</h3>
+                <div className={`text-xs font-medium px-3 py-1 rounded-full ${statusColor}`}>{statusSeverity.toUpperCase()}</div>
+              </div>
+
+              <div className="min-h-[68px] flex items-center">
+                <div className="flex-1 text-sm text-slate-700 dark:text-slate-200">
+                  {statusMessage ? (
+                    <div>{statusMessage}</div>
+                  ) : (
+                    <div className="text-slate-500">
+                      Press <strong>Refresh Status</strong> to check your payment and account approval.
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-right text-xs text-muted-foreground ml-4">
+                  {lastCheckedAt ? <div className="text-[10px]">Last checked</div> : null}
+                  <div className="font-mono text-xs">{lastCheckedAt ?? "—"}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* ACTIONS: responsive and fixed so buttons don't overflow */}
+            <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
+              <Button
+                onClick={refreshProfile}
+                disabled={refreshing}
+                className={`flex-1 min-w-0 w-full sm:w-auto rounded-full px-6 py-3 text-base font-semibold shadow-md transform transition duration-150
+                           ${refreshing ? "opacity-80 cursor-wait" : "hover:shadow-lg hover:-translate-y-0.5"}`}
+                aria-label="Refresh payment and profile status"
+                title="Refresh status"
+              >
+                <div className="flex items-center justify-center gap-3 whitespace-nowrap">
+                  <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+                  <span className="truncate">{refreshing ? "Checking..." : "Refresh Status"}</span>
+                </div>
+              </Button>
+
+              <Button
+                onClick={() => window.open("https://t.me/example_username", "_blank", "noopener")}
+                className="flex-1 min-w-0 w-full sm:w-auto rounded-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold shadow-md transform transition duration-150 hover:shadow-lg hover:-translate-y-0.5"
+                aria-label="Send payment proof via Telegram"
+              >
+                <span className="truncate">Send Proof (Telegram)</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment instructions + QR */}
+        <div className="bg-gradient-to-t from-white/40 dark:from-transparent border border-slate-100 dark:border-slate-800 rounded-xl p-6 flex flex-col md:flex-row gap-6 items-center">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold mb-2">How to activate</h3>
+            <ol className="list-decimal list-inside text-sm space-y-2 text-slate-700 dark:text-slate-200">
+              <li><strong>Scan the QR code</strong> to make payment.</li>
+              <li>In payment note write: <span className="font-semibold text-purple-600">Momentum Grid – {user?.email ?? ""}</span></li>
+              <li>Take a screenshot of the transaction.</li>
+              <li>Send the screenshot via <strong className="text-red-500">Telegram</strong> for approval.</li>
+            </ol>
+          </div>
+
+          <div className="w-48 h-48 bg-white dark:bg-slate-900 rounded-lg shadow-md flex items-center justify-center border border-slate-100 dark:border-slate-800">
+            <img src="/artificial_payment_qr.jpg" alt="Payment QR" className="w-40 h-40 object-cover rounded" />
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-center">
+          <button onClick={handleSignOut} className="text-sm text-rose-500 hover:underline flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Sign Out & Try Different Account
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

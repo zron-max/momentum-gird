@@ -1,27 +1,34 @@
+'use client'
 
-import { useState } from 'react';
-import { Calendar, CheckSquare, BookOpen, Target, Clock, Utensils, BarChart3 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import HomePage from './HomePage';
-import { ThemeProvider } from 'next-themes';
-import CalendarView from '@/components/CalendarView';
-import HabitsTab from '@/components/HabitsTab';
-import LearningTab from '@/components/LearningTab';
-import ProjectsTab from '@/components/ProjectsTab';
-import RoutinesTab from '@/components/RoutinesTab';
-import MealsTab from '@/components/MealsTab';
-import AnalyticsTab from '@/components/AnalyticsTab';
-import Header from '@/components/Layout/Header';
-import AdminDashboard from '@/components/Admin/AdminDashboard';
-import FeedbackForm from '@/components/Feedback/FeedbackForm';
-import AuthForm from '@/components/Auth/AuthForm';
+import { useState } from 'react'
+import { Calendar } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import HomePage from './HomePage'
+import { ThemeProvider } from 'next-themes'
+import HabitsTab from '../components/HabitsTab'
+import LearningTab from '../components/LearningTab'
+import ProjectsTab from '../components/projects/ProjectsTab'
+import RoutinesTab from '../components/RoutinesTab'
+import MealsTab from '../components/MealsTab'
+import AnalyticsTab from '../components/AnalyticsTab'
+import Header from '../components/Layout/Header'
+import AdminDashboard from '../components/Admin/AdminDashboard'
+import FeedbackForm from '../components/Feedback/FeedbackForm'
+import Sidebar from '../components/Sidebar'
 
-export type TabType = 'habits' | 'learning' | 'projects' | 'routines' | 'meals' | 'analytics';
+export type TabType =
+  | 'habits'
+  | 'learning'
+  | 'projects'
+  | 'routines'
+  | 'meals'
+  | 'analytics'
 
 const Index = () => {
-  const { user, isLoading, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('habits');
-  const [showingAdminDashboard, setShowingAdminDashboard] = useState(false);
+  const { user, isLoading, isAdmin } = useAuth()
+  const [activeTab, setActiveTab] = useState<TabType>('habits')
+  const [showingAdminDashboard, setShowingAdminDashboard] = useState(false)
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false)
 
   if (isLoading) {
     return (
@@ -33,97 +40,85 @@ const Index = () => {
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!user) {
-    return <HomePage />;
+    return <HomePage />
   }
-
-  const tabs = [
-    { id: 'habits' as TabType, label: 'Habit-Forming', icon: CheckSquare, color: 'bg-gradient-to-r from-emerald-500 to-teal-500' },
-    { id: 'learning' as TabType, label: 'Learning', icon: BookOpen, color: 'bg-gradient-to-r from-blue-500 to-indigo-500' },
-    { id: 'projects' as TabType, label: 'Projects', icon: Target, color: 'bg-gradient-to-r from-purple-500 to-pink-500' },
-    { id: 'routines' as TabType, label: 'Routines', icon: Clock, color: 'bg-gradient-to-r from-orange-500 to-red-500' },
-    { id: 'meals' as TabType, label: 'Meals', icon: Utensils, color: 'bg-gradient-to-r from-green-500 to-lime-500' },
-    { id: 'analytics' as TabType, label: 'Analytics', icon: BarChart3, color: 'bg-gradient-to-r from-cyan-500 to-blue-500' }
-  ];
 
   const renderContent = () => {
     if (showingAdminDashboard && isAdmin) {
-      return <AdminDashboard />;
+      return <AdminDashboard />
     }
 
     switch (activeTab) {
       case 'habits':
-        return <HabitsTab />;
+        return <HabitsTab />
       case 'learning':
-        return <LearningTab />;
+        return <LearningTab />
       case 'projects':
-        return <ProjectsTab />;
+        return <ProjectsTab />
       case 'routines':
-        return <RoutinesTab />;
+        return <RoutinesTab />
       case 'meals':
-        return <MealsTab />;
+        return <MealsTab />
       case 'analytics':
-        return <AnalyticsTab />;
+        return <AnalyticsTab />
       default:
-        return <HabitsTab />;
+        return <HabitsTab />
     }
-  };
+  }
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-primary/10 transition-all">
-        {/* Header */}
-        <Header 
-          onAdminDashboard={() => setShowingAdminDashboard(!showingAdminDashboard)}
-          showingAdminDashboard={showingAdminDashboard}
-        />
-
-        {/* Navigation Tabs - Hide when showing admin dashboard */}
+      <div className="relative min-h-screen bg-gradient-to-br from-background via-secondary/20 to-primary/10 transition-all flex">
+        {/*
+          Sidebar is now completely fixed, and its width is managed
+          entirely by its own component's state. The parent container no
+          longer needs to manage its hover state. The fixed sidebar
+          will not affect the document flow.
+        */}
         {!showingAdminDashboard && (
-          <nav className="bg-card/60 backdrop-blur-sm border-b border-border transition-all">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-between py-3">
-                <div className="flex space-x-1 overflow-x-auto">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap animate-fade-in ${
-                          isActive
-                            ? `${tab.color} text-white shadow-lg transform scale-105`
-                            : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span>{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {/* Feedback Button */}
-                <div className="ml-4">
-                  <FeedbackForm />
-                </div>
-              </div>
-            </div>
-          </nav>
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            // `isHovered` is now managed internally by Sidebar.tsx
+          />
         )}
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {renderContent()}
-        </main>
+        {/* This is the main content wrapper. It is positioned absolutely
+          and its left offset is dynamically set based on the sidebar's
+          current width. This correctly aligns the main content area with the
+          sidebar, eliminating the extra space.
+        */}
+        <div
+          className={`
+            absolute top-0 right-0 bottom-0
+            flex-1 flex flex-col transition-all duration-300
+            ${!showingAdminDashboard ? (isSidebarHovered ? 'left-64' : 'left-16') : 'left-0'}
+          `}
+        >
+          <Header
+            onAdminDashboard={() =>
+              setShowingAdminDashboard(!showingAdminDashboard)
+            }
+            showingAdminDashboard={showingAdminDashboard}
+          />
+
+          {!showingAdminDashboard && (
+            <div className="px-4 sm:px-6 lg:px-8 mt-4">
+              <FeedbackForm />
+            </div>
+          )}
+
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+            {renderContent()}
+          </main>
+        </div>
       </div>
     </ThemeProvider>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index

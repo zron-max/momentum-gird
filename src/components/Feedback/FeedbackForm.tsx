@@ -1,75 +1,79 @@
-import React, { useState } from 'react';
-import { MessageSquare, Send, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from 'react'
+import { MessageSquare, Send, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'
 
 const FeedbackForm = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const { user } = useAuth()
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+    e.preventDefault()
+    if (!user) return
 
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
-      const { error } = await supabase
-        .from('feedback')
-        .insert({
-          user_id: user.id,
-          subject: subject.trim(),
-          message: message.trim(),
-          status: 'open'
-        });
+      const { error } = await supabase.from('feedback').insert({
+        user_id: user.id,
+        subject: subject.trim(),
+        message: message.trim(),
+        status: 'open',
+      })
 
       if (error) {
-        throw error;
+        throw error
       }
 
       toast({
-        title: "Feedback submitted!",
+        title: 'Feedback submitted!',
         description: "Thank you for your feedback. We'll review it soon.",
-      });
+      })
 
       // Reset form
-      setSubject('');
-      setMessage('');
-      setIsOpen(false);
+      setSubject('')
+      setMessage('')
+      setIsOpen(false)
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      console.error('Error submitting feedback:', error)
       toast({
-        title: "Error",
-        description: "Failed to submit feedback. Please try again.",
-        variant: "destructive",
-      });
+        title: 'Error',
+        description: 'Failed to submit feedback. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="flex items-center space-x-2 transition-all hover:bg-secondary hover:scale-105"
         >
           <MessageSquare className="w-4 h-4" />
@@ -83,7 +87,7 @@ const FeedbackForm = () => {
             <span>Send Feedback</span>
           </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
@@ -96,7 +100,7 @@ const FeedbackForm = () => {
               className="transition-all"
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="message">Message</Label>
             <Textarea
@@ -109,18 +113,18 @@ const FeedbackForm = () => {
               className="transition-all resize-none"
             />
           </div>
-          
+
           <div className="flex justify-end space-x-2">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setIsOpen(false)}
               disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading || !subject.trim() || !message.trim()}
               className="bg-gradient-primary hover:opacity-90"
             >
@@ -140,7 +144,7 @@ const FeedbackForm = () => {
         </form>
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}
 
-export default FeedbackForm;
+export default FeedbackForm
