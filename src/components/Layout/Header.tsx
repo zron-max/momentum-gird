@@ -18,7 +18,10 @@ import {
   Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
+// --- MODIFICATION START ---
+// Corrected import path
+import { useAuth } from '../../contexts/AuthContext'
+// --- MODIFICATION END ---
 import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
@@ -27,11 +30,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import ProfileSidebar from '@/components/Profile/ProfileSidebar'
+// --- MODIFICATION START ---
+// Corrected import path
+import ProfileSidebar from '../Profile/ProfileSidebar'
+// --- MODIFICATION END ---
 
 interface HeaderProps {
   onAdminDashboard?: () => void
@@ -203,6 +209,10 @@ const Header: React.FC<HeaderProps> = ({
                     aria-label="Open user menu"
                   >
                     <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={user?.user_metadata?.avatar_url}
+                        alt={user?.user_metadata?.full_name || 'User Avatar'}
+                      />
                       <AvatarFallback className="bg-gradient-primary text-white text-sm">
                         {user?.email?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
@@ -297,3 +307,4 @@ const Header: React.FC<HeaderProps> = ({
 }
 
 export default Header
+

@@ -15,7 +15,10 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+// --- MODIFICATION START ---
+// Reverted to alias path
 import { useAuth } from '@/contexts/AuthContext'
+// --- MODIFICATION END ---
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -37,7 +40,7 @@ interface UserProfile {
   is_admin: boolean
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
-  updated_at?: string // ✅ added missing field
+  updated_at?: string
 }
 
 interface ProfileSidebarProps {
@@ -79,19 +82,31 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
           .eq('user_id', user.id)
           .single<UserProfile>()
 
-        if (error) throw error
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 means no rows found, which is fine
+          throw error
+        }
 
         if (data) {
           setUserProfile(data)
-          setName(data.full_name || '')
+          // Prioritize Google name, then DB name for editing
+          setName(user?.user_metadata?.full_name || data.full_name || '')
+        } else {
+          // If no profile in DB, just use Google name
+          setName(user?.user_metadata?.full_name || '')
         }
       } catch (error: any) {
         console.error('Error fetching profile:', error)
-        toast({
-          title: 'Error Loading Profile',
-          description: error?.message || 'Could not fetch your profile data.',
-          variant: 'destructive',
-        })
+        // If profile doesn't exist, just use metadata
+        if (error.code === 'PGRST116') {
+          setName(user?.user_metadata?.full_name || '')
+        } else {
+          toast({
+            title: 'Error Loading Profile',
+            description: error?.message || 'Could not fetch your profile data.',
+            variant: 'destructive',
+          })
+        }
       } finally {
         setIsFetching(false)
       }
@@ -116,7 +131,9 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
 
   // Reset form state
   const resetForm = () => {
-    setName(userProfile?.full_name || '')
+    setName(
+      userProfile?.full_name || user?.user_metadata?.full_name || '',
+    )
     setAvatarFile(null)
     setAvatarPreview(null)
   }
@@ -145,7 +162,9 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
 
     setIsLoading(true)
     try {
-      let avatar_url = userProfile?.avatar_url
+      // Prioritize existing DB url, then Google url
+      let avatar_url =
+        userProfile?.avatar_url || user?.user_metadata?.avatar_url
 
       // Upload new avatar if selected
       if (avatarFile) {
@@ -170,14 +189,15 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         avatar_url = publicUrl
       }
 
+      // Upsert: update if exists, insert if not
       const { data, error: updateError } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          user_id: user.id, // Ensure user_id is set for inserts
           full_name: name.trim(),
           avatar_url,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id)
         .select()
         .single<UserProfile>()
 
@@ -227,9 +247,17 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   }
 
   // Helper for initials
-  const getInitials = (fullName?: string) => {
-    if (!fullName) return '?'
-    return fullName
+  // Made robust to handle names or emails
+  const getInitials = (nameOrEmail?: string | null) => {
+    if (!nameOrEmail) return '?'
+
+    // Check if it's an email
+    if (nameOrEmail.includes('@')) {
+      return nameOrEmail.charAt(0).toUpperCase()
+    }
+
+    // Assume it's a full name
+    return nameOrEmail
       .split(' ')
       .filter(Boolean)
       .map((n) => n[0])
@@ -257,14 +285,22 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
               <div className="relative">
                 <Avatar className="h-24 w-24">
                   <AvatarImage
-                    src={avatarPreview || userProfile?.avatar_url}
-                    alt={userProfile?.full_name}
+                    src={
+                      avatarPreview || // 1. Local upload preview
+                      user?.user_metadata?.avatar_url || // 2. Google OAuth photo
+                      userProfile?.avatar_url // 3. Database photo
+                    }
+                    alt={
+                      userProfile?.full_name || // DB name
+                      user?.user_metadata?.full_name || // Google name
+                      'User Avatar' // Fallback
+                    }
                   />
                   <AvatarFallback className="text-3xl">
-                    {userProfile ? (
-                      getInitials(userProfile.full_name)
-                    ) : (
-                      <UserIcon />
+                    {getInitials(
+                      userProfile?.full_name || // DB name
+                        user?.user_metadata?.full_name || // Google name
+                        user?.email, // Email as last resort
                     )}
                   </AvatarFallback>
                 </Avatar>
@@ -306,7 +342,8 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
               ) : (
                 <div className="text-center">
                   <h2 className="text-2xl font-semibold">
-                    {userProfile?.full_name}
+                    {userProfile?.full_name ||
+                      user?.user_metadata?.full_name}
                   </h2>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
                 </div>
@@ -337,19 +374,23 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                 </Badge>
               </ProfileInfoRow>
               {!isEditing && (
-                <ProfileInfoRow icon={Mail} label="Email">
-                  <span className="text-sm text-muted-foreground">
-                    {user?.email}
-                  </span>
-                </ProfileInfoRow>
+                <>
+                  <ProfileInfoRow icon={Mail} label="Email">
+                    <span className="text-sm text-muted-foreground">
+                      {user?.email}
+                    </span>
+                  </ProfileInfoRow>
+                  <ProfileInfoRow icon={CalendarDays} label="Member Since">
+                    <span className="text-sm text-muted-foreground">
+                      {userProfile?.created_at
+                        ? new Date(userProfile.created_at).toLocaleDateString()
+                        : new Date(
+                            user?.created_at || Date.now(),
+                          ).toLocaleDateString()}
+                    </span>
+                  </ProfileInfoRow>
+                </>
               )}
-              <ProfileInfoRow icon={CalendarDays} label="Member Since">
-                <span className="text-sm text-muted-foreground">
-                  {userProfile?.created_at
-                    ? new Date(userProfile.created_at).toLocaleDateString()
-                    : 'N/A'}
-                </span>
-              </ProfileInfoRow>
             </div>
           </div>
         )}
@@ -440,3 +481,4 @@ const ProfileSkeleton = () => (
 )
 
 export default ProfileSidebar
+
