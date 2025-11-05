@@ -163,13 +163,17 @@
 
   .dark {
     /* === Enhanced Dark Theme === */
-    --background: 240 10% 3.9%;
+    --background: 240 10% 3.9%; /* Original */
+    --background: 252 6% 11%; /* Subtle purple-gray */
     --background-secondary: 240 8% 6%;
+    --background-secondary: 252 6% 13%;
     --background-tertiary: 240 6% 8%;
+    --background-tertiary: 252 6% 15%;
     --foreground: 0 0% 98%;
     --foreground-muted: 240 5% 64.9%;
 
     --card: 240 10% 3.9%;
+    --card: 252 6% 12%;
     --card-secondary: 240 8% 6%;
     --card-foreground: 0 0% 98%;
     --card-border: 240 3.7% 15.9%;
@@ -304,6 +308,24 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body {
+    background-image: radial-gradient(
+        at 27% 38%,
+        hsl(252 6% 15% / 0.3),
+        transparent 40%
+      ),
+      radial-gradient(
+        at 73% 62%,
+        hsl(252 6% 15% / 0.3),
+        transparent 40%
+      ),
+      radial-gradient(
+        at 50% 50%,
+        hsl(252 6% 10% / 0.2),
+        transparent 50%
+      );
   }
 
   /* Typography enhancements */
